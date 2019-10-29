@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">BookCase</string>
+    <string-array name="books">
+        <item>book1</item>
+        <item>book2</item>
+        <item>book3</item>
+        <item>book4</item>
+        <item>book5</item>
+        <item>book6</item>
+        <item>book7</item>
+        <item>book8</item>
+        <item>book9</item>
+        <item>book10</item>
+    </string-array>
+</resources>
