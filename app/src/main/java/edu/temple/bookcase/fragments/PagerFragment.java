@@ -13,6 +13,7 @@ import androidx.viewpager.widget.ViewPager;
 
 import java.util.List;
 
+import edu.temple.bookcase.Book;
 import edu.temple.bookcase.adapters.FragmentAdapter;
 import edu.temple.bookcase.R;
 
@@ -31,8 +32,9 @@ public class PagerFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View retval = inflater.inflate(R.layout.fragment_pager, container, false);
         FragmentManager fm = this.getActivity().getSupportFragmentManager();
-        ((ViewPager)retval.findViewById(R.id.viewPager)).setAdapter(new FragmentAdapter(fm, this.fragments));
+        ((ViewPager) retval.findViewById(R.id.viewPager)).setAdapter(new FragmentAdapter(fm, this.fragments));
 
         return retval;
     }
+
 }

@@ -13,17 +13,33 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import edu.temple.bookcase.Book;
 import edu.temple.bookcase.MainActivity;
 import edu.temple.bookcase.R;
 import edu.temple.bookcase.adapters.StringArrayAdapter;
 
 public class BookListFragment extends Fragment {
-    private static final String LIST = "Book List";
+    private static final String TITLES = "titles";
 
-    public static BookListFragment newInstance(String[] books) {
+    private String[] books;
+
+    public static BookListFragment newInstance(List<Book> books) {
+        int size = books.size();
+
+        String[] bookTitles = new String[size];
+
+        for (int i = 0; i < bookTitles.length; ++i) {
+            Book b = books.get(i);
+            bookTitles[i] = b.title();
+        }
+
         BookListFragment retval = new BookListFragment();
+
         Bundle bundle = new Bundle();
-        bundle.putStringArray(BookListFragment.LIST, books);
+        bundle.putStringArray(TITLES, bookTitles);
         retval.setArguments(bundle);
 
         return retval;
@@ -32,15 +48,12 @@ public class BookListFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         Context context = this.getContext();
-        String[] list = null;
         Bundle args = this.getArguments();
         View retval = inflater.inflate(R.layout.fragment_book_list, container, false);
 
-        if (args != null) {
-            list = args.getStringArray(BookListFragment.LIST);
-        }
-        if (context != null && list != null) {
-            StringArrayAdapter adapter = new StringArrayAdapter(context, list);
+        if (context != null && args != null) {
+            this.books = args.getStringArray(TITLES);
+            StringArrayAdapter adapter = new StringArrayAdapter(context, this.books);
             ListView bookListView = retval.findViewById(R.id.bookList);
             bookListView.setAdapter(adapter);
 
@@ -57,4 +70,5 @@ public class BookListFragment extends Fragment {
 
         return retval;
     }
+
 }
