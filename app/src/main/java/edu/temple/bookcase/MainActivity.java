@@ -21,7 +21,9 @@ import android.util.JsonReader;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.w3c.dom.Text;
 
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     ViewGroup holder;
     Fragment bookList;
     BookDetailsFragment bookDetails;
+    SeekBar seekBar;
 
     AudiobookService.MediaControlBinder media = null;
 
@@ -69,16 +72,10 @@ public class MainActivity extends AppCompatActivity {
     public class myHandler extends Handler {
         @Override
         public void handleMessage(@NonNull Message msg) {
-            if (msg != null) {
-                super.handleMessage(msg);
-                AudiobookService.BookProgress obj = (AudiobookService.BookProgress) msg.obj;
-                if (obj != null) {
-                    MainActivity.this.progress = obj.getProgress();
-                    if (MainActivity.this.playingBook != null) {
-                        String s = MainActivity.this.progress + "/" + MainActivity.this.playingBook.duration();
-                        ((TextView) MainActivity.this.findViewById(R.id.nowPlayingProgress)).setText(s);
-                    }
-                }
+            super.handleMessage(msg);
+            AudiobookService.BookProgress obj = (AudiobookService.BookProgress) msg.obj;
+            if (obj != null) {
+                MainActivity.this.seekBar.setProgress(obj.getProgress());
             }
         }
     }
@@ -96,6 +93,26 @@ public class MainActivity extends AppCompatActivity {
 
         this.isTablet = this.getResources().getBoolean(R.bool.isTablet);
         this.orientation = this.getResources().getConfiguration().orientation;
+
+        this.seekBar = this.findViewById(R.id.seekBar);
+
+        this.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                if (MainActivity.this.playingBook != null) {
+                    media.seekTo(seekBar.getProgress());
+                }
+            }
+        });
 
         this.doAsync("https://kamorris.com/lab/audlib/booksearch.php");
     }
@@ -137,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean playing = false;
     private Book playingBook = null;
-    private Integer progress = null;
 
     public void play(View view) {
         if (this.selected != null) {
@@ -146,6 +162,8 @@ public class MainActivity extends AppCompatActivity {
             this.media.play(this.selected.id());
             this.playing = true;
             this.playingBook = this.selected;
+            this.seekBar.setProgress(0);
+            this.seekBar.setMax(this.playingBook.duration());
         }
     }
 
@@ -155,6 +173,8 @@ public class MainActivity extends AppCompatActivity {
         this.media.stop();
         this.playing = false;
         this.playingBook = null;
+        this.seekBar.setProgress(0);
+        this.seekBar.setMax(100);
     }
 
     public void togglePlay(View view) {
@@ -164,29 +184,9 @@ public class MainActivity extends AppCompatActivity {
                 this.media.pause();
             } else {
                 ((TextView) this.findViewById(R.id.nowPlayingPaused)).setText("(Playing)");
-                this.media.play(this.playingBook.id(), this.progress);
+                this.media.play(this.playingBook.id(), this.seekBar.getProgress());
             }
             this.playing = !this.playing;
-        }
-    }
-
-    public void seekForward(View view) {
-        if (this.playingBook != null) {
-            int seekTo = this.progress + 10;
-            if (seekTo >= this.playingBook.duration()) {
-                seekTo = this.playingBook.duration() - 1;
-            }
-            media.seekTo(seekTo);
-        }
-    }
-
-    public void seekBack(View view) {
-        if (this.playingBook != null) {
-            int seekTo = this.progress - 10;
-            if (seekTo <= 0) {
-                seekTo = 1;
-            }
-            media.seekTo(seekTo);
         }
     }
 

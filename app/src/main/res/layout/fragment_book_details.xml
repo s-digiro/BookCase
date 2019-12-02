@@ -26,4 +26,12 @@
         android:layout_height="529dp"
         tools:srcCompat="@tools:sample/avatars[0]" />
 
+    <Button
+        android:id="@+id/start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:onClick="play"
+        android:text="@string/start" />
+
 </LinearLayout>

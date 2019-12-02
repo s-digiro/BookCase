@@ -37,34 +37,12 @@
                 android:text="(Stopped)"
                 android:textAlignment="viewStart" />
 
-            <TextView
-                android:id="@+id/nowPlayingProgress"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/seek_left"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:onClick="seekBack"
-                android:text="@string/back" />
-
-            <Button
-                android:id="@+id/start"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:onClick="play"
-                android:text="Start" />
 
             <Button
                 android:id="@+id/stop"
@@ -82,15 +60,13 @@
                 android:onClick="togglePlay"
                 android:text="toggle" />
 
-            <Button
-                android:id="@+id/seek_right"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:onClick="seekForward"
-                android:text="@string/forward" />
-
         </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
 
     </LinearLayout>
 
