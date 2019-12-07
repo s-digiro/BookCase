@@ -15,8 +15,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ems="10"
-            android:inputType="textPersonName"
-            android:text="search" />
+            android:inputType="textPersonName" />
 
         <Button
             android:id="@+id/button"
@@ -30,5 +29,6 @@
     <ListView
         android:id="@+id/bookList"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="0dip"
+        android:layout_weight="1" />
 </LinearLayout>

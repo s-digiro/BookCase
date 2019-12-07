@@ -2,22 +2,24 @@ package edu.temple.bookcase;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.Message;
-import android.util.JsonReader;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -25,16 +27,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.w3c.dom.Text;
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import edu.temple.audiobookplayer.AudiobookService;
 import edu.temple.bookcase.fragments.BookDetailsFragment;
@@ -45,6 +44,8 @@ import edu.temple.bookcase.fragments.PagerFragment;
 public class MainActivity extends AppCompatActivity {
 
     int orientation;
+
+    String searchParam = null;
 
     Book selected = null;
 
@@ -80,8 +81,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressLint("StaticFieldLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        this.checkPermissions();
+
         Intent intent = new Intent(this, AudiobookService.class);
         bindService(intent, connection, Context.BIND_AUTO_CREATE);
 
@@ -114,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        this.doAsync("https://kamorris.com/lab/audlib/booksearch.php");
+        this.loadBooks(null, true);
     }
 
     @Override
@@ -138,6 +142,12 @@ public class MainActivity extends AppCompatActivity {
         ft.commit();
     }
 
+
+
+
+
+    // DO STUFF WITH BOOKS
+
     public void selectBook(int index) {
         this.selected = this.books.get(index);
         this.bookDetails.displayBook(this.selected);
@@ -145,121 +155,315 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void search(View view) {
-        String param = ((EditText)this.findViewById(R.id.editText)).getText().toString();
-        String path = "https://kamorris.com/lab/audlib/booksearch.php?search=";
-        path += param;
+        this.searchParam = ((EditText)this.findViewById(R.id.editText)).getText().toString();
 
-        this.doAsync(path);
-    }
-
-    private boolean playing = false;
-    private Book playingBook = null;
-
-    public void play(View view) {
-        if (this.selected != null) {
-            ((TextView) this.findViewById(R.id.nowPlayingTitle)).setText(this.selected.title());
-            ((TextView) this.findViewById(R.id.nowPlayingPaused)).setText("(Playing)");
-            this.media.play(this.selected.id());
-            this.playing = true;
-            this.playingBook = this.selected;
-            this.seekBar.setProgress(0);
-            this.seekBar.setMax(this.playingBook.duration());
-        }
-    }
-
-    public void stop(View view) {
-        ((TextView) this.findViewById(R.id.nowPlayingTitle)).setText("(None)");
-        ((TextView) this.findViewById(R.id.nowPlayingPaused)).setText("(Stopped)");
-        this.media.stop();
-        this.playing = false;
-        this.playingBook = null;
-        this.seekBar.setProgress(0);
-        this.seekBar.setMax(100);
-    }
-
-    public void togglePlay(View view) {
-        if (this.playingBook != null) {
-            if (this.playing) {
-                ((TextView) this.findViewById(R.id.nowPlayingPaused)).setText("(Paused)");
-                this.media.pause();
-            } else {
-                ((TextView) this.findViewById(R.id.nowPlayingPaused)).setText("(Playing)");
-                this.media.play(this.playingBook.id(), this.seekBar.getProgress());
-            }
-            this.playing = !this.playing;
-        }
-    }
-
-    public void doAsync(String path) {
         @SuppressLint("StaticFieldLeak")
         AsyncTask task = new AsyncTask() {
+            private String text = null;
 
-            private List<Book> books = new ArrayList<>();
+            @Override
+            protected void onPreExecute() {
+                this.text = MainActivity.this.searchParam;
+                Toast.makeText(MainActivity.this.getApplicationContext(), this.text, Toast.LENGTH_SHORT);
+            }
 
             @Override
             protected Object doInBackground(Object[] objects) {
                 try {
-                    this.books = new ArrayList<>();
-                    String path = (String)objects[0];
-                    URL api = new URL(path);
-                    HttpURLConnection conn = (HttpURLConnection)api.openConnection();
-                    if (conn.getResponseCode() == 200) {
-                        InputStream responseBody = conn.getInputStream();
-                        InputStreamReader reader = new InputStreamReader(responseBody, StandardCharsets.UTF_8);
-                        JsonReader jsonReader = new JsonReader(reader);
-                        jsonReader.beginArray();
-                        while (jsonReader.hasNext()) {
-                            Book.Builder builder = Book.Builder.newInstance();
-                            jsonReader.beginObject();
-                            while (jsonReader.hasNext()) {
-                                String key = jsonReader.nextName();
-                                switch (key) {
-                                    case "book_id":
-                                        builder.setId(Integer.parseInt(jsonReader.nextString()));
-                                        break;
-                                    case "title":
-                                        builder.setTitle(jsonReader.nextString());
-                                        break;
-                                    case "author":
-                                        builder.setAuthor(jsonReader.nextString());
-                                        break;
-                                    case "published":
-                                        builder.setPublished(Integer.parseInt(jsonReader.nextString()));
-                                        break;
-                                    case "cover_url":
-                                        builder.setCoverURL(jsonReader.nextString());
-                                        break;
-                                    case "duration":
-                                        builder.setDuration(Integer.parseInt(jsonReader.nextString()));
-                                        break;
-                                    default:
-                                        jsonReader.nextString();
-                                        break;
-                                }
-                            }
-                            jsonReader.endObject();
-                            this.books.add(builder.build());
-                        }
-                        jsonReader.endArray();
-                    }
+                    File file = new File(MainActivity.this.getApplicationContext().getFilesDir(), "last.txt");
+                    Objects.requireNonNull(file.getParentFile()).mkdirs();
+                    file.createNewFile();
+                    OutputStream output = new FileOutputStream(file);
+                    output.write(text.getBytes());
+                    output.flush();
+                    output.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+
+                return null;
+            }
+        };
+        task.execute();
+
+        this.loadBooks(this.searchParam, false);
+    }
+
+    private Book playingBook = null;
+
+    public void play(View view) {
+        if (this.selected != null && this.bookDetails.book() != null) {
+            @SuppressLint("StaticFieldLeak")
+            AsyncTask task = new AsyncTask() {
+
+                Context context = null;
+                Book playBook = null;
+                Book saveBook = null;
+                int playProgress = 0;
+                int saveProgress = 0;
+                AudiobookService.MediaControlBinder media = null;
+
+                Boolean local = false;
+
+                @Override
+                protected void onPreExecute() {
+                    this.context = MainActivity.this.getApplicationContext();
+                    this.playBook = MainActivity.this.bookDetails.book();
+                    this.saveBook = MainActivity.this.playingBook;
+                    this.saveProgress = ((SeekBar) MainActivity.this.findViewById(R.id.seekBar)).getProgress();
+                    this.media = MainActivity.this.media;
+                }
+
+                @Override
+                protected Object doInBackground(Object[] objects) {
+                    if (this.context != null) {
+                        if (this.saveBook != null) {
+                            FileIO.saveBookMark(this.context.getFilesDir(), this.saveBook, this.saveProgress);
+                        }
+
+                        this.playProgress = FileIO.getBookMark(this.context.getFilesDir(), this.playBook);
+
+                        if (FileIO.hasLocalAudio(this.context.getFilesDir(), this.playBook)) {
+                            this.media.play(FileIO.getLocalAudio(this.context.getFilesDir(), this.playBook), this.playProgress);
+                            this.local = true;
+                        } else {
+                            this.media.play(this.playBook.id(), this.playProgress);
+                            this.local = false;
+                        }
+                    }
+
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Object o) {
+                    MainActivity a = MainActivity.this;
+
+                    ((TextView) a.findViewById(R.id.nowPlayingTitle)).setText(this.playBook.title());
+                    ((TextView) a.findViewById(R.id.nowPlayingPaused)).setText("(Playing)");
+
+                    a.playingBook = this.playBook;
+                    a.seekBar.setProgress(this.playProgress);
+                    a.seekBar.setMax(this.playBook.duration());
+                    if (this.local) {
+                        Toast.makeText(a.getApplicationContext(), "Playing from local storage", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(a.getApplicationContext(), "Playing from stream", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            };
+            task.execute();
+        }
+    }
+
+    public void stop(View view) {
+        if (this.playingBook != null) {
+            @SuppressLint("StaticFieldLeak")
+            AsyncTask task = new AsyncTask() {
+                Context context = null;
+                AudiobookService.MediaControlBinder media = null;
+                Book stopBook = null;
+                int stopProgress = 0;
+
+                @Override
+                protected void onPreExecute() {
+                    MainActivity a = MainActivity.this;
+                    this.context = a.getApplicationContext();
+                    this.media = a.media;
+                    this.stopBook = a.playingBook;
+                    this.stopProgress = a.seekBar.getProgress();
+                }
+
+                @Override
+                protected Object doInBackground(Object[] objects) {
+                    FileIO.saveBookMark(this.context.getFilesDir(), this.stopBook, this.stopProgress);
+                    this.media.stop();
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Object o) {
+                    MainActivity a = MainActivity.this;
+
+                    ((TextView) a.findViewById(R.id.nowPlayingTitle)).setText("(None)");
+                    ((TextView) a.findViewById(R.id.nowPlayingPaused)).setText("(Stopped)");
+                    a.playingBook = null;
+                    a.seekBar.setProgress(0);
+                    a.seekBar.setMax(100);
+                }
+            };
+            task.execute();
+        }
+    }
+
+    public void togglePlay(View view) {
+        if (this.playingBook != null) {
+            @SuppressLint("StaticFieldLeak")
+            AsyncTask task = new AsyncTask() {
+
+                Context context = null;
+                AudiobookService.MediaControlBinder media = null;
+                Book toggleBook = null;
+                Integer progress = null;
+
+                Boolean paused = null;
+                Boolean local = null;
+
+                @Override
+                protected void onPreExecute() {
+                    MainActivity a = MainActivity.this;
+                    this.context = a.getApplicationContext();
+                    this.media = a.media;
+                    this.toggleBook = a.playingBook;
+                    this.progress = a.seekBar.getProgress();
+                }
+
+                @Override
+                protected Object doInBackground(Object[] objects) {
+                    if (this.media.isPlaying()) {
+                        this.media.pause();
+                        this.paused = true;
+                    } else {
+                        if (FileIO.hasLocalAudio(this.context.getFilesDir(), this.toggleBook)) {
+                            this.media.play(FileIO.getLocalAudio(this.context.getFilesDir(), this.toggleBook), this.progress);
+                            this.local = true;
+                        } else {
+                            this.media.play(this.toggleBook.id(), this.progress);
+                            this.local = false;
+                        }
+                        this.paused = false;
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Object o) {
+                    MainActivity a = MainActivity.this;
+
+                    if (this.paused) {
+                        ((TextView) a.findViewById(R.id.nowPlayingPaused)).setText("(Paused)");
+                    } else {
+                        ((TextView) a.findViewById(R.id.nowPlayingPaused)).setText("(Playing)");
+                        if (this.local) {
+                            Toast.makeText(a.getApplicationContext(), "Playing from local storage", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(a.getApplicationContext(), "Playing from stream", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            };
+            task.execute();
+        }
+    }
+
+    public void downloadButton(View view) {
+        if (this.bookDetails.book() != null) {
+            @SuppressLint("StaticFieldLeak")
+            AsyncTask task = new AsyncTask() {
+
+                Context context = null;
+                Book book = null;
+                Boolean delete = null;
+
+                @Override
+                protected void onPreExecute() {
+                    MainActivity a = MainActivity.this;
+                    this.context = a.getApplicationContext();
+                    this.book = a.bookDetails.book();
+
+                    a.findViewById(R.id.download).setEnabled(false);
+                }
+
+                @Override
+                protected Object doInBackground(Object[] objects) {
+                    this.delete = FileIO.hasLocalAudio(this.context.getFilesDir(), this.book);
+
+                    if (this.delete) {
+                        FileIO.deleteLocalAudio(this.context.getFilesDir(), this.book);
+                    } else {
+                        FileIO.downloadLocalAudio(this.context.getFilesDir(), this.book);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Object o) {
+                    MainActivity a = MainActivity.this;
+                    if (this.delete) {
+                        ((TextView)a.findViewById(R.id.download)).setText("Download");
+                    } else {
+                        ((TextView)a.findViewById(R.id.download)).setText("Delete");
+                    }
+                    a.findViewById(R.id.download).setEnabled(true);
+                }
+            };
+            task.execute();
+        }
+    }
+
+
+
+
+
+    // BOOK GETTER
+
+    public void loadBooks(String param, boolean loadOldSearch) {
+        @SuppressLint("StaticFieldLeak")
+        AsyncTask task = new AsyncTask() {
+            Context context = null;
+            private List<Book> books = null;
+
+            @Override
+            protected void onPreExecute() {
+                MainActivity a = MainActivity.this;
+                this.context = a.getApplicationContext();
+            }
+
+            @Override
+            protected Object doInBackground(Object[] objects) {
+                String param = (String)objects[0];
+                Boolean loadOldSearch = (Boolean)objects[1];
+                this.books = WebIO.downloadBooks(param, loadOldSearch, this.context.getFilesDir());
                 return null;
             }
 
             @Override
             protected void onPostExecute(Object o) {
-                MainActivity.this.books = this.books;
-                MainActivity.this.bookList = BookListFragment.newInstance(MainActivity.this.books);
-                MainActivity.this.bookDetails = BookDetailsFragment.newInstance();
-                if (MainActivity.this.isTablet) {
-                    MainActivity.this.setForOrientation(Configuration.ORIENTATION_LANDSCAPE);
+                MainActivity a = MainActivity.this;
+                a.books = this.books;
+                a.bookList = BookListFragment.newInstance(a.books);
+                a.bookDetails = BookDetailsFragment.newInstance();
+                if (a.isTablet) {
+                    a.setForOrientation(Configuration.ORIENTATION_LANDSCAPE);
                 } else {
-                    MainActivity.this.setForOrientation(MainActivity.this.orientation);
+                    a.setForOrientation(MainActivity.this.orientation);
                 }
             }
         };
-        task.execute(path);
+        task.execute(param, loadOldSearch);
+    }
+
+
+
+
+
+    // PERMISSION STUFF
+
+    private static int REQUEST_WRITE = 1;
+    private static int REQUEST_READ = 2;
+
+    public void checkPermissions() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_WRITE);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQUEST_READ);
+        }
     }
 }

@@ -1,6 +1,7 @@
 package edu.temple.bookcase.adapters;
 
 import android.content.Context;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -34,6 +35,7 @@ public class StringArrayAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
         TextView view = new TextView(context);
         view.setText(this.strings[position]);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
 
         return view;
     }
